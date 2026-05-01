@@ -24,10 +24,22 @@ final totalIncomeProvider = Provider<double>((ref) {
       .fold(0, (sum, item) => sum + item.amount);
 });
 
-// Calcul des Dépenses Totales
+// Calcul des Dépenses Totales (Historique complet)
 final totalExpenseProvider = Provider<double>((ref) {
   final txs = ref.watch(transactionsProvider).value ?? [];
   return txs
       .where((t) => t.type == TransactionType.expense)
       .fold(0, (sum, item) => sum + item.amount);
+});
+
+// Calcul des Dépenses du MOIS EN COURS
+final currentMonthExpenseProvider = Provider<double>((ref) {
+  final txs = ref.watch(transactionsProvider).value ?? [];
+  final now = DateTime.now();
+  return txs
+      .where((t) => 
+          t.type == TransactionType.expense && 
+          t.date.month == now.month && 
+          t.date.year == now.year)
+      .fold(0.0, (sum, item) => sum + item.amount);
 });

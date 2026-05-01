@@ -9,6 +9,7 @@ import '../providers/transaction_provider.dart';
 import '../../../features/auth/data/auth_repository.dart';
 import '../../../shared/widgets/balance_card.dart';
 import '../../../shared/widgets/transaction_tile.dart';
+import '../../../shared/widgets/budget_progress_bar.dart';
 import '../../../features/ai/ai_advice_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -52,6 +53,13 @@ class HomeScreen extends ConsumerWidget {
                 FadeInDown(
                   duration: const Duration(milliseconds: 500),
                   child: BalanceCard(balance: balance, income: income, expense: expense),
+                ),
+                const SizedBox(height: 16),
+
+                // ── Barre de Budget ────────────────────────────
+                FadeInDown(
+                  delay: const Duration(milliseconds: 100),
+                  child: const BudgetProgressBar(),
                 ),
                 const SizedBox(height: 20),
 
@@ -130,11 +138,11 @@ class HomeScreen extends ConsumerWidget {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         onPressed: () => context.push('/add-transaction'),
-        icon: const Icon(Icons.add),
-        label: Text(AppLocalizations.of(context)!.addTransaction),
         backgroundColor: AppColors.primary,
+        tooltip: AppLocalizations.of(context)!.addTransaction,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

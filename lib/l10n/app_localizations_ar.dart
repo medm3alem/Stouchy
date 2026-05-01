@@ -9,7 +9,7 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appTitle => 'تطبيق الميزانية';
+  String get appTitle => 'Stouchy';
 
   @override
   String get login => 'تسجيل الدخول';
@@ -42,10 +42,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get addTransaction => 'إضافة معاملة';
 
   @override
-  String get addIncome => 'Ajouter un revenu';
+  String get addIncome => 'إضافة دخل';
 
   @override
-  String get addExpense => 'Ajouter une dépense';
+  String get addExpense => 'إضافة مصاريف';
 
   @override
   String get amount => 'المبلغ';
@@ -57,58 +57,58 @@ class AppLocalizationsAr extends AppLocalizations {
   String get category => 'الفئة';
 
   @override
-  String get date => 'Date';
+  String get date => 'التاريخ';
 
   @override
-  String get note => 'Note (optionnel)';
+  String get note => 'ملاحظة (اختياري)';
 
   @override
-  String get statistics => 'إحصائيات';
+  String get statistics => 'الإحصائيات';
 
   @override
-  String get budget => 'Budget mensuel';
+  String get budget => 'الميزانية الشهرية';
 
   @override
   String get settings => 'الإعدادات';
 
   @override
-  String get language => 'Langue';
+  String get language => 'اللغة';
 
   @override
-  String get notifications => 'Notifications';
+  String get notifications => 'الإشعارات';
 
   @override
-  String get exportPdf => 'Exporter PDF';
+  String get exportPdf => 'تصدير PDF';
 
   @override
-  String get recentTransactions => 'Transactions récentes';
+  String get recentTransactions => 'المعاملات الأخيرة';
 
   @override
-  String get viewAll => 'Voir tout';
+  String get viewAll => 'عرض الكل';
 
   @override
   String get noTransactions => 'لا توجد معاملات';
 
   @override
-  String get budgetExceeded => 'Budget dépassé !';
+  String get budgetExceeded => 'تجاوزت الميزانية!';
 
   @override
-  String get aiAdvice => 'Conseil IA';
+  String get aiAdvice => 'نصيحة الذكاء الاصطناعي';
 
   @override
-  String get analyzing => 'Analyse en cours...';
+  String get analyzing => 'جاري التحليل...';
 
   @override
-  String get all => 'Tout';
+  String get all => 'الكل';
 
   @override
-  String get search => 'Rechercher...';
+  String get search => 'بحث...';
 
   @override
-  String get delete => 'Supprimer';
+  String get delete => 'حذف';
 
   @override
-  String get transactionDeleted => 'Transaction supprimée';
+  String get transactionDeleted => 'تم حذف المعاملة';
 
   @override
   String get save => 'حفظ';
@@ -117,56 +117,56 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cancel => 'إلغاء';
 
   @override
-  String get remaining => 'Restant';
+  String get remaining => 'المتبقي';
 
   @override
-  String get spent => 'Dépensé';
+  String get spent => 'المصروف';
 
   @override
-  String get darkMode => 'Mode sombre';
+  String get darkMode => 'الوضع الليلي';
 
   @override
-  String get passwordForgotten => 'Mot de passe oublié ?';
+  String get passwordForgotten => 'نسيت كلمة المرور؟';
 
   @override
-  String get noAccount => 'Pas encore de compte ? ';
+  String get noAccount => 'ليس لديك حساب؟ ';
 
   @override
-  String get alreadyAccount => 'Déjà un compte ? ';
+  String get alreadyAccount => 'لديك حساب بالفعل؟ ';
 
   @override
-  String get invalidEmail => 'Email invalide';
+  String get invalidEmail => 'بريد إلكتروني غير صالح';
 
   @override
-  String get passwordTooShort => 'Min 6 caractères';
+  String get passwordTooShort => '6 أحرف على الأقل';
 
   @override
-  String get passwordMismatch => 'Mots de passe différents';
+  String get passwordMismatch => 'كلمات المرور غير متطابقة';
 
   @override
-  String get titleRequired => 'Titre requis';
+  String get titleRequired => 'العنوان مطلوب';
 
   @override
-  String get invalidAmount => 'Montant invalide';
+  String get invalidAmount => 'المبلغ غير صحيح';
 
   @override
-  String get selectCategory => 'Sélectionnez une catégorie';
+  String get selectCategory => 'اختر فئة';
 
   @override
-  String get transactionAdded => 'Transaction ajoutée ✓';
+  String get transactionAdded => 'تمت إضافة المعاملة ✓';
 
   @override
-  String get budgetUpdated => 'Budget mis à jour ✓';
+  String get budgetUpdated => 'تم تحديث الميزانية ✓';
 
   @override
-  String get monthly => 'Mensuel';
+  String get monthly => 'شهرياً';
 
   @override
-  String get weekly => 'Hebdomadaire';
+  String get weekly => 'أسبوعياً';
 
   @override
-  String get expenseByCategory => 'Dépenses par catégorie';
+  String get expenseByCategory => 'المصاريف حسب الفئة';
 
   @override
-  String get incomeVsExpense => 'Revenus vs Dépenses';
+  String get incomeVsExpense => 'الدخل مقابل المصاريف';
 }

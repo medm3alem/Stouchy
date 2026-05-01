@@ -39,8 +39,14 @@ class TransactionRepository {
     await _transactionsRef.doc(id).delete();
   }
 
-  // Mettre à jour une transaction
-  Future<void> updateTransaction(TransactionModel transaction) async {
-    await _transactionsRef.doc(transaction.id).update(transaction.toMap());
+  // Supprimer toutes les transactions (Vider l'historique)
+  Future<void> deleteAllTransactions() async {
+    if (_userId == null) return;
+    final batch = _firestore.batch();
+    final snapshots = await _transactionsRef.get();
+    for (var doc in snapshots.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
   }
 }

@@ -1,75 +1,41 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
-import '../transactions/models/transaction_model.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../transactions/domain/transaction.dart';
 
 class GeminiService {
-  // Remplacer par votre clé API Gemini
-  // Obtenir sur : https://aistudio.google.com/app/apikey
-  static const _apiKey = 'VOTRE_CLE_GEMINI_ICI';
+  static const _hardcodedApiKey = 'AIzaSyDGEuo0zjL0uZgYJNGgf-j3bs4hm82YGpw';
 
-  static final _model = GenerativeModel(
-    model: 'gemini-1.5-flash',
-    apiKey: _apiKey,
-  );
-
-  // Analyse financière personnalisée
   static Future<String> analyzeFinances({
+    String? apiKey,
     required List<TransactionModel> transactions,
     required double balance,
-    required double monthlyExpense,
-    required double? budgetLimit,
-    String language = 'fr',
+    required double totalIncome,
+    required double totalExpense,
   }) async {
-    final expenseByCategory = <String, double>{};
-    for (final tx in transactions.where((t) => t.type == TransactionType.expense)) {
-      expenseByCategory[tx.category] = (expenseByCategory[tx.category] ?? 0) + tx.amount;
-    }
-
-    final topCategories = expenseByCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    final prompt = '''
-Tu es un conseiller financier personnel expert. Analyse ces données et fournis des conseils personnalisés en ${language == 'fr' ? 'français' : language == 'ar' ? 'arabe' : 'anglais'}.
-
-Données financières:
-- Solde total: ${balance.toStringAsFixed(2)} TND
-- Dépenses ce mois: ${monthlyExpense.toStringAsFixed(2)} TND
-- Budget mensuel limite: ${budgetLimit?.toStringAsFixed(2) ?? 'Non défini'} TND
-- Top catégories de dépenses: ${topCategories.take(3).map((e) => '${e.key}: ${e.value.toStringAsFixed(2)} TND').join(', ')}
-- Nombre total de transactions: ${transactions.length}
-
-Fournis:
-1. Une analyse de la situation financière (2-3 phrases)
-2. Le point positif principal
-3. Le point d'amélioration principal  
-4. Un conseil d'action concret pour cette semaine
-5. Un score de santé financière sur 10
-
-Format: réponse courte et claire, maximum 150 mots.
-''';
-
+    final effectiveKey = (apiKey != null && apiKey.isNotEmpty) ? apiKey : _hardcodedApiKey;
+    
     try {
-      final response = await _model.generateContent([Content.text(prompt)]);
-      return response.text ?? 'Analyse non disponible.';
+      final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$effectiveKey');
+
+      final prompt = "En tant qu'expert finance Stouchy, donne un conseil de 20 mots max en français basé sur ces chiffres : Solde ${balance}€, Revenus ${totalIncome}€, Dépenses ${totalExpense}€.";
+
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{
+            'parts': [{'text': prompt}]
+          }]
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['candidates'][0]['content']['parts'][0]['text'].toString().trim();
+      }
+      return "Prêt à analyser vos finances.";
     } catch (e) {
-      return 'Service IA temporairement indisponible. Vérifiez votre connexion.';
-    }
-  }
-
-  // Suggestion de catégorie automatique
-  static Future<String> suggestCategory(String transactionTitle) async {
-    final categories = ['Nourriture', 'Transport', 'Logement', 'Santé',
-      'Loisirs', 'Shopping', 'Éducation', 'Salaire', 'Freelance', 'Autre'];
-    final prompt = '''
-Pour cette transaction: "$transactionTitle"
-Choisir UNE seule catégorie parmi: ${categories.join(', ')}
-Répondre avec le nom exact de la catégorie, rien d'autre.
-''';
-    try {
-      final response = await _model.generateContent([Content.text(prompt)]);
-      final suggestion = response.text?.trim() ?? 'Autre';
-      return categories.contains(suggestion) ? suggestion : 'Autre';
-    } catch (_) {
-      return 'Autre';
+      return "Besoin d'un conseil ? Je suis là.";
     }
   }
 }

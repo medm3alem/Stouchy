@@ -10,6 +10,7 @@ import '../../features/transactions/presentation/transactions_list_screen.dart';
 import '../../features/statistics/presentation/statistics_screen.dart';
 import '../../features/budget/presentation/budget_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/ai/chat_ai_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -51,6 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/statistics',   builder: (_, __) => const StatisticsScreen()),
       GoRoute(path: '/budget-settings', builder: (_, __) => const BudgetScreen()),
       GoRoute(path: '/settings',     builder: (_, __) => const SettingsScreen()),
+      GoRoute(path: '/chat-ai',      builder: (_, __) => const ChatAiScreen()),
     ],
   );
 });
