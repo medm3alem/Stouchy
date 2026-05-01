@@ -52,39 +52,41 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
     _scrollToBottom();
 
     final userKey = ref.read(aiApiKeyProvider);
-    final apiKey = (userKey != null && userKey.isNotEmpty) 
-        ? userKey 
-        : 'AIzaSyDGEuo0zjL0uZgYJNGgf-j3bs4hm82YGpw';
-    
+    final apiKey = (userKey != null && userKey.isNotEmpty)
+        ? userKey
+        : ''; // REMOVE SECRET FOR GITHUB PUSH
+
     final balance = ref.read(balanceProvider);
     final income = ref.read(totalIncomeProvider);
     final expense = ref.read(totalExpenseProvider);
 
     try {
-      // URL STABLE V1 (Correction de la 404)
-      final url = Uri.parse('https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=$apiKey');
-      
-      final prompt = "Tu es le coach financier de l'app Stouchy. "
-          "Données : Solde ${balance}€, Revenus ${income}€, Dépenses ${expense}€. "
-          "Réponds à : $text (en français, max 50 mots)";
+      final url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
+
+      final systemPrompt = "Tu es le coach financier de l'app Stouchy. "
+          "Données utilisateur : Solde ${balance}€, Revenus ${income}€, Dépenses ${expense}€. "
+          "Réponds toujours en français, de façon concise (max 50 mots).";
 
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+        },
         body: jsonEncode({
-          'contents': [{
-            'parts': [{'text': prompt}]
-          }],
-          'generationConfig': {
-            'temperature': 0.7,
-            'maxOutputTokens': 200,
-          }
+          'model': 'llama-3.3-70b-versatile',
+          'messages': [
+            {'role': 'system', 'content': systemPrompt},
+            {'role': 'user', 'content': text},
+          ],
+          'temperature': 0.7,
+          'max_tokens': 200,
         }),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final responseText = data['candidates'][0]['content']['parts'][0]['text'];
+        final responseText = data['choices'][0]['message']['content'];
         setState(() {
           _displayMessages.add({'role': 'ai', 'text': responseText.trim()});
         });
@@ -93,7 +95,7 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
         final errorMessage = errorData['error']?['message'] ?? 'Erreur inconnue';
         setState(() {
           _displayMessages.add({
-            'role': 'ai', 
+            'role': 'ai',
             'text': 'Erreur ${response.statusCode}: $errorMessage'
           });
         });
@@ -130,9 +132,19 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
                     decoration: BoxDecoration(
                       color: isUser ? AppColors.primary : Colors.white,
                       borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 2)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 2,
+                        )
+                      ],
                     ),
-                    child: Text(m['text']!, style: TextStyle(color: isUser ? Colors.white : Colors.black87)),
+                    child: Text(
+                      m['text']!,
+                      style: TextStyle(
+                        color: isUser ? Colors.white : Colors.black87,
+                      ),
+                    ),
                   ),
                 );
               },
@@ -148,7 +160,9 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
                     controller: _messageController,
                     decoration: InputDecoration(
                       hintText: 'Posez une question...',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(30)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                     ),
                     onSubmitted: (_) => _sendMessage(),
