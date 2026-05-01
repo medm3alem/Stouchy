@@ -1,0 +1,22 @@
+{
+  "@@locale": "ar",
+  "appTitle": "تطبيق الميزانية",
+  "login": "تسجيل الدخول",
+  "register": "إنشاء حساب",
+  "email": "البريد الإلكتروني",
+  "password": "كلمة المرور",
+  "confirmPassword": "تأكيد كلمة المرور",
+  "logout": "تسجيل الخروج",
+  "balance": "الرصيد الإجمالي",
+  "income": "الدخل",
+  "expense": "المصاريف",
+  "addTransaction": "إضافة معاملة",
+  "amount": "المبلغ",
+  "title": "العنوان",
+  "category": "الفئة",
+  "statistics": "إحصائيات",
+  "settings": "الإعدادات",
+  "noTransactions": "لا توجد معاملات",
+  "save": "حفظ",
+  "cancel": "إلغاء"
+}

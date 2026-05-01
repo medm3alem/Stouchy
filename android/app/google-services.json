@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "841062706518",
+    "project_id": "stouchy-5ac9c",
+    "storage_bucket": "stouchy-5ac9c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:841062706518:android:336c2194a4f42f6b73faf7",
+        "android_client_info": {
+          "package_name": "com.stouchy.stouchy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBr322UudRjJJbVuz0rvkU3IIGLBYby9fM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

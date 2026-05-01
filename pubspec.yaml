@@ -1,0 +1,69 @@
+name: stouchy
+description: App de gestion de budget personnel multiplateforme
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:          # i18n — OBLIGATOIRE
+    sdk: flutter
+
+  # ── Firebase ──────────────────────────────────────
+  firebase_core: ^2.27.0
+  firebase_auth: ^4.17.0
+  cloud_firestore: ^4.15.0
+
+  # ── State Management ──────────────────────────────
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.4
+
+  # ── Navigation ────────────────────────────────────
+  go_router: ^13.2.0
+
+  # ── Graphiques ────────────────────────────────────
+  fl_chart: ^0.67.0
+
+  # ── Sécurité locale ───────────────────────────────
+  flutter_secure_storage: ^9.0.0
+  hive_flutter: ^1.1.0
+  hive: ^2.2.3
+
+  # ── Notifications ─────────────────────────────────
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.3
+
+  # ── AI (Gemini) ───────────────────────────────────
+  google_generative_ai: ^0.4.3
+
+  # ── Export PDF ────────────────────────────────────
+  pdf: ^3.10.8
+  printing: ^5.12.0
+
+  # ── UI & Animations ───────────────────────────────
+  google_fonts: ^6.2.1
+  lottie: ^3.1.0
+  animate_do: ^3.3.4
+
+  # ── Utilitaires ───────────────────────────────────
+  intl: ^0.20.2
+  uuid: ^4.4.0
+  shared_preferences: ^2.2.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.0
+  hive_generator: ^2.0.1
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true       # ← OBLIGATOIRE pour l'i18n
+  assets:
+    - assets/animations/
+    - assets/images/
