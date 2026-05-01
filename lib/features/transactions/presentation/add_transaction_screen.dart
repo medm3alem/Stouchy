@@ -7,6 +7,7 @@ import '../domain/transaction.dart';
 import '../data/transaction_repository.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/data/auth_repository.dart';
+import '../../ai/gemini_service.dart';
 import 'package:stouchy/l10n/app_localizations.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
@@ -25,6 +26,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   String _selectedCategory = 'Alimentation';
   late TransactionType _type;
   bool _isLoading = false;
+  Timer? _debounce;
+  bool _isPredicting = false;
 
   final List<String> _expenseCategories = [
     'Alimentation', 'Transport', 'Loisirs', 'Santé', 
@@ -46,6 +49,39 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     } else {
       _selectedCategory = 'Alimentation';
     }
+    _titleController.addListener(_onTitleChanged);
+  }
+
+  @override
+  void dispose() {
+    _titleController.removeListener(_onTitleChanged);
+    _titleController.dispose();
+    _amountController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onTitleChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 1000), () async {
+      final title = _titleController.text.trim();
+      if (title.length < 3) return;
+
+      setState(() => _isPredicting = true);
+      final prediction = await GeminiService.predictCategory(
+        title: title,
+        categories: _categories,
+      );
+
+      if (prediction != null && mounted) {
+        setState(() {
+          _selectedCategory = prediction;
+          _isPredicting = false;
+        });
+      } else if (mounted) {
+        setState(() => _isPredicting = false);
+      }
+    });
   }
 
   Future<void> _save() async {
@@ -159,9 +195,12 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
               const SizedBox(height: 32),
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Titre',
-                  prefixIcon: Icon(Icons.title),
+                  prefixIcon: const Icon(Icons.title),
+                  suffixIcon: _isPredicting 
+                    ? const SizedBox(width: 20, height: 20, child: Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(strokeWidth: 2)))
+                    : null,
                 ),
                 validator: (v) => v!.isEmpty ? 'Entrez un titre' : null,
               ),

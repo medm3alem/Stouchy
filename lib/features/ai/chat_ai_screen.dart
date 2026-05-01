@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../transactions/providers/transaction_provider.dart';
+import '../transactions/domain/transaction.dart';
 import 'ai_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -18,10 +21,16 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
   final ScrollController _scrollController = ScrollController();
   final List<Map<String, String>> _displayMessages = [];
   bool _isLoading = false;
+  
+  // Voice variables
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  double _soundLevel = 0.0;
 
   @override
   void initState() {
     super.initState();
+    _speech = stt.SpeechToText();
     _displayMessages.add({
       'role': 'ai',
       'text': 'Bonjour ! Je suis votre coach Stouchy. Je vois vos finances. Une question ?'
@@ -40,9 +49,51 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
     });
   }
 
+  Future<void> _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) {
+          if (val == 'done' || val == 'notListening') {
+            setState(() => _isListening = false);
+          }
+        },
+        onError: (val) => setState(() => _isListening = false),
+      );
+      if (available) {
+        setState(() {
+          _isListening = true;
+          _soundLevel = 0.0;
+        });
+        _speech.listen(
+          onResult: (val) => setState(() {
+            _messageController.text = val.recognizedWords;
+          }),
+          onSoundLevelChange: (level) {
+            setState(() => _soundLevel = level);
+          },
+        );
+      }
+    } else {
+      _stopListening();
+      if (_messageController.text.isNotEmpty) {
+        _sendMessage();
+      }
+    }
+  }
+
+  void _stopListening() {
+    _speech.stop();
+    setState(() {
+      _isListening = false;
+      _soundLevel = 0.0;
+    });
+  }
+
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty || _isLoading) return;
+
+    if (_isListening) _stopListening();
 
     setState(() {
       _displayMessages.add({'role': 'user', 'text': text});
@@ -54,8 +105,9 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
     final userKey = ref.read(aiApiKeyProvider);
     final apiKey = (userKey != null && userKey.isNotEmpty)
         ? userKey
-        : ''; // REMOVE SECRET FOR GITHUB PUSH
+        : ''; // Clé masquée pour GitHub
 
+    final transactions = ref.read(transactionsProvider).value ?? [];
     final balance = ref.read(balanceProvider);
     final income = ref.read(totalIncomeProvider);
     final expense = ref.read(totalExpenseProvider);
@@ -63,9 +115,15 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
     try {
       final url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
 
+      final txsSummary = transactions.take(30).map((t) => 
+        "${t.date.day}/${t.date.month}: ${t.type == TransactionType.income ? '+' : '-'}${t.amount}€ - ${t.title} [${t.category}]"
+      ).join("\n");
+
       final systemPrompt = "Tu es le coach financier de l'app Stouchy. "
-          "Données utilisateur : Solde ${balance}€, Revenus ${income}€, Dépenses ${expense}€. "
-          "Réponds toujours en français, de façon concise (max 50 mots).";
+          "SOLDE: ${balance}€ | REVENUS: ${income}€ | DÉPENSES: ${expense}€\n"
+          "HISTORIQUE RÉCENT :\n$txsSummary\n\n"
+          "Réponds toujours en français, de façon concise (max 60 mots). "
+          "Utilise les noms des transactions pour tes analyses.";
 
       final response = await http.post(
         url,
@@ -151,15 +209,23 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
             ),
           ),
           if (_isLoading) const LinearProgressIndicator(),
+          if (_isListening) _buildVoiceWave(),
           Padding(
             padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 32),
             child: Row(
               children: [
+                FloatingActionButton.small(
+                  heroTag: 'mic',
+                  onPressed: _listen,
+                  backgroundColor: _isListening ? Colors.red : AppColors.primary,
+                  child: Icon(_isListening ? Icons.mic : Icons.mic_none, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
                     decoration: InputDecoration(
-                      hintText: 'Posez une question...',
+                      hintText: _isListening ? 'J\'écoute...' : 'Posez une question...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(30),
                       ),
@@ -170,6 +236,7 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
                 ),
                 const SizedBox(width: 8),
                 FloatingActionButton.small(
+                  heroTag: 'send',
                   onPressed: _sendMessage,
                   child: const Icon(Icons.send),
                 ),
@@ -177,6 +244,29 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildVoiceWave() {
+    return Container(
+      height: 60,
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: List.generate(15, (index) {
+          // Animation simple basée sur soundLevel
+          final height = 5.0 + (math.Random().nextDouble() * 20.0 * (1 + _soundLevel.abs() / 10));
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 100),
+            width: 4,
+            height: height,
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(10),
+            ),
+          );
+        }),
       ),
     );
   }
