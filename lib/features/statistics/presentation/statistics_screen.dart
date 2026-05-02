@@ -89,9 +89,14 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                     height: 300,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.02),
+                          blurRadius: 10,
+                        )
+                      ],
                     ),
                     child: _selectedView == ChartView.pie 
                       ? _buildPieChart(dataMap, total, l10n)
@@ -282,7 +287,16 @@ class _CategoryTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5)]),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 5,
+          )
+        ],
+      ),
       child: Row(
         children: [
           Container(width: 12, height: 40, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(6))),

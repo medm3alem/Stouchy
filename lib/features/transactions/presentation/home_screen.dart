@@ -25,6 +25,16 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: GestureDetector(
+            onTap: () => context.push('/profile'),
+            child: const CircleAvatar(
+              backgroundColor: Colors.white24,
+              child: Icon(Icons.person, color: Colors.white, size: 20),
+            ),
+          ),
+        ),
         title: Text(l10n.appTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
         actions: [
           IconButton(icon: const Icon(Icons.bar_chart), onPressed: () => context.push('/statistics')),

@@ -42,6 +42,14 @@ class AuthRepository {
     await _auth.signOut();
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
+    }
+  }
+
   Exception _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'user-not-found':

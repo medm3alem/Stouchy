@@ -6,6 +6,8 @@ import '../../../core/providers/locale_provider.dart';
 import '../../../core/providers/theme_provider.dart';
 import '../../transactions/data/transaction_repository.dart';
 import '../../ai/ai_provider.dart';
+import '../../auth/data/auth_repository.dart';
+import '../../../core/theme/app_theme.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -46,6 +48,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // --- Section Profil ---
+          _buildHeader("Compte"),
+          Card(
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.person, color: Colors.white),
+              ),
+              title: Text(ref.watch(authRepositoryProvider).currentUser?.displayName ?? "Utilisateur"),
+              subtitle: Text(ref.watch(authRepositoryProvider).currentUser?.email ?? ""),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/profile'),
+            ),
+          ),
+          const SizedBox(height: 16),
+
           // --- Section Apparence ---
           _buildHeader(l10n.darkMode),
           Card(

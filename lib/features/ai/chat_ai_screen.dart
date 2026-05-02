@@ -184,8 +184,10 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: isDark ? AppColors.darkBg : Colors.grey[50],
       appBar: AppBar(
         title: const Text('Assistant IA'),
         actions: [
@@ -233,6 +235,9 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
   }
 
   Widget _buildMessageBubble(String text, bool isUser) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -252,7 +257,9 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser ? AppColors.primary : Colors.white,
+                color: isUser 
+                  ? AppColors.primary 
+                  : (isDark ? AppColors.darkCard : Colors.white),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(20),
                   topRight: const Radius.circular(20),
@@ -261,16 +268,19 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: isDark ? Colors.black26 : Colors.black.withOpacity(0.05),
                     blurRadius: 5,
                     offset: const Offset(0, 2),
                   )
                 ],
+                border: isDark 
+                  ? Border.all(color: Colors.white.withOpacity(0.05)) 
+                  : Border.all(color: Colors.black.withOpacity(0.02)),
               ),
               child: Text(
                 text,
                 style: TextStyle(
-                  color: isUser ? Colors.white : Colors.black87,
+                  color: isUser ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
                   fontSize: 15,
                 ),
               ),
@@ -291,18 +301,21 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
   }
 
   Widget _buildInputArea() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: isDark ? AppColors.darkCard : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: isDark ? Colors.black54 : Colors.black.withOpacity(0.05),
               blurRadius: 10,
-              offset: const Offset(0, -5),
+              offset: const Offset(0, -2),
             )
           ],
+          border: isDark ? Border(top: BorderSide(color: Colors.white.withOpacity(0.05))) : null,
         ),
         child: Row(
           children: [
@@ -316,14 +329,17 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
               child: Container(
                 constraints: const BoxConstraints(minHeight: 50),
                 decoration: BoxDecoration(
-                  color: Colors.grey[100],
+                  color: isDark ? AppColors.darkCard : Colors.grey[100],
                   borderRadius: BorderRadius.circular(25),
+                  border: isDark ? Border.all(color: Colors.white10) : null,
                 ),
                 child: TextField(
                   controller: _messageController,
                   maxLines: null,
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black87),
                   decoration: InputDecoration(
                     hintText: _isListening ? 'J\'écoute...' : 'Posez une question...',
+                    hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   ),
@@ -344,10 +360,11 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
   }
 
   Widget _buildVoiceWave() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 60),
-      color: Colors.white,
+      color: isDark ? AppColors.darkBg : Colors.white,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: List.generate(15, (index) {
