@@ -5,9 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../domain/transaction.dart';
 import '../data/transaction_repository.dart';
+import '../providers/transaction_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../ai/gemini_service.dart';
+import '../../budget/presentation/budget_screen.dart';
+import '../../../core/notifications/notification_service.dart';
 import 'package:stouchy/l10n/app_localizations.dart';
 
 class AddTransactionScreen extends ConsumerStatefulWidget {
@@ -59,6 +62,28 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     _amountController.dispose();
     _debounce?.cancel();
     super.dispose();
+  }
+
+  Future<void> _checkBudgetAndNotify(double newAmount) async {
+    try {
+      // On récupère le budget actuel (on attend s'il le faut)
+      final budgetAsync = ref.read(budgetStreamProvider);
+      final budget = budgetAsync.value;
+      
+      // On récupère les dépenses déjà enregistrées ce mois-ci
+      final currentExpense = ref.read(currentMonthExpenseProvider);
+      
+      if (budget != null && budget.limit > 0) {
+        final totalAfter = currentExpense + newAmount;
+        
+        // On ne notifie que si cet achat précis nous fait passer au-dessus du budget
+        if (totalAfter > budget.limit && currentExpense <= budget.limit) {
+          await NotificationService.showBudgetAlert(totalAfter, budget.limit);
+        }
+      }
+    } catch (e) {
+      debugPrint("Erreur lors de la vérification du budget: $e");
+    }
   }
 
   void _onTitleChanged() {
@@ -116,10 +141,14 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     setState(() => _isLoading = true);
     
     // On lance la sauvegarde sans attendre la réponse du serveur (fire-and-forget)
-    // Firestore gère la file d'attente et la synchronisation locale automatiquement
     ref.read(transactionRepositoryProvider).addTransaction(transaction).catchError((e) {
       debugPrint("Erreur asynchrone Firestore: $e");
     });
+
+    // Vérification du budget (on le fait en parallèle de la sauvegarde)
+    if (transaction.type == TransactionType.expense) {
+      _checkBudgetAndNotify(transaction.amount);
+    }
 
     // On affiche immédiatement le succès et on quitte
     if (mounted) {

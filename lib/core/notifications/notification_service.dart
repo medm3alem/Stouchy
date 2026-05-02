@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 
@@ -12,26 +13,62 @@ class NotificationService {
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
+    
     await _plugin.initialize(
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
-    // Demander permission Android 13+
+
+    // Création du canal Android (Obligatoire pour les versions récentes)
+    const androidChannel = AndroidNotificationChannel(
+      'budget_channel', 
+      'Alertes Budget',
+      description: 'Notifications de dépassement de budget',
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    await _plugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(androidChannel);
+
+    // Demander la permission
+    await requestPermission();
+  }
+
+  static Future<void> requestPermission() async {
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
   }
 
-  // Notification immédiate (budget dépassé)
+  // Notification de test
+  static Future<void> showTestNotification() async {
+    await _plugin.show(
+      999,
+      'Test Stouchy',
+      'Si vous voyez ceci, les notifications fonctionnent ! ✅',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'budget_channel', 'Alertes Budget',
+          importance: Importance.max,
+          priority: Priority.high,
+          showWhen: true,
+        ),
+      ),
+    );
+  }
+
   static Future<void> showBudgetAlert(double spent, double limit) async {
     await _plugin.show(
       1,
       '⚠️ Budget dépassé !',
-      'Vous avez dépensé ${spent.toStringAsFixed(0)} TND sur ${limit.toStringAsFixed(0)} TND ce mois',
+      'Vous avez dépensé ${spent.toStringAsFixed(0)} € sur ${limit.toStringAsFixed(0)} € ce mois',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'budget_channel', 'Alertes Budget',
           channelDescription: 'Notifications de dépassement de budget',
-          importance: Importance.high,
+          importance: Importance.max,
           priority: Priority.high,
           color: Color(0xFFE53935),
         ),
@@ -40,13 +77,12 @@ class NotificationService {
     );
   }
 
-  // Notification quotidienne de rappel
   static Future<void> scheduleDailyReminder() async {
     await _plugin.zonedSchedule(
       2,
-      '💰 BudgetApp',
+      '💰 Stouchy',
       'N\'oubliez pas de saisir vos dépenses du jour !',
-      _nextInstanceOf(20, 0), // chaque soir à 20h00
+      _nextInstanceOf(20, 0),
       const NotificationDetails(
         android: AndroidNotificationDetails('reminder_channel', 'Rappels quotidiens',
             importance: Importance.defaultImportance),
@@ -64,6 +100,4 @@ class NotificationService {
     if (scheduled.isBefore(now)) scheduled = scheduled.add(const Duration(days: 1));
     return scheduled;
   }
-
-  static Future<void> cancelAll() => _plugin.cancelAll();
 }
