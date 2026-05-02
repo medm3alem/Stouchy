@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../transactions/domain/transaction.dart';
 
 class GeminiService {
-  static const _hardcodedApiKey = ''; // Clé masquée pour GitHub
+  static const _hardcodedApiKey = ''; // Masqué pour GitHub
 
   static Future<String> analyzeFinances({
     String? apiKey,
@@ -11,6 +11,7 @@ class GeminiService {
     required double balance,
     required double totalIncome,
     required double totalExpense,
+    String language = "français",
   }) async {
     final effectiveKey = (apiKey != null && apiKey.isNotEmpty)
         ? apiKey
@@ -27,7 +28,7 @@ class GeminiService {
       final prompt = "Tu es l'expert financier Stouchy. Analyse ces données :\n"
           "Solde: ${balance}€ | Revenus: ${totalIncome}€ | Dépenses: ${totalExpense}€\n"
           "Dernières transactions :\n$txsSummary\n\n"
-          "Donne un conseil ultra-court (max 20 mots) en français, très précis sur une habitude détectée.";
+          "Donne un conseil ultra-court (max 20 mots) en $language, très précis sur une habitude détectée.";
 
       final response = await http.post(
         url,

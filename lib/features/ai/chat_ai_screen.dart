@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:animate_do/animate_do.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:convert';
 import 'dart:math' as math;
@@ -7,6 +8,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import '../transactions/providers/transaction_provider.dart';
 import '../transactions/domain/transaction.dart';
 import 'ai_provider.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ChatAiScreen extends ConsumerStatefulWidget {
@@ -50,6 +52,12 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
   }
 
   Future<void> _listen() async {
+    final currentLocale = ref.read(localeProvider);
+    String localeId = currentLocale.languageCode;
+    if (localeId == 'fr') localeId = 'fr_FR';
+    if (localeId == 'en') localeId = 'en_US';
+    if (localeId == 'ar') localeId = 'ar_SA';
+
     if (!_isListening) {
       bool available = await _speech.initialize(
         onStatus: (val) {
@@ -65,6 +73,7 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
           _soundLevel = 0.0;
         });
         _speech.listen(
+          localeId: localeId,
           onResult: (val) => setState(() {
             _messageController.text = val.recognizedWords;
           }),
@@ -105,12 +114,17 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
     final userKey = ref.read(aiApiKeyProvider);
     final apiKey = (userKey != null && userKey.isNotEmpty)
         ? userKey
-        : ''; // Clé masquée pour GitHub
+        : ''; // Masqué pour GitHub
 
     final transactions = ref.read(transactionsProvider).value ?? [];
     final balance = ref.read(balanceProvider);
     final income = ref.read(totalIncomeProvider);
     final expense = ref.read(totalExpenseProvider);
+    final currentLocale = ref.read(localeProvider);
+
+    String languageName = "français";
+    if (currentLocale.languageCode == 'en') languageName = "anglais";
+    if (currentLocale.languageCode == 'ar') languageName = "arabe";
 
     try {
       final url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
@@ -122,7 +136,7 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
       final systemPrompt = "Tu es le coach financier de l'app Stouchy. "
           "SOLDE: ${balance}€ | REVENUS: ${income}€ | DÉPENSES: ${expense}€\n"
           "HISTORIQUE RÉCENT :\n$txsSummary\n\n"
-          "Réponds toujours en français, de façon concise (max 60 mots). "
+          "Réponds toujours en $languageName, de façon concise (max 60 mots). "
           "Utilise les noms des transactions pour tes analyses.";
 
       final response = await http.post(
@@ -171,102 +185,212 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Assistant IA')),
+      backgroundColor: Colors.grey[50],
+      appBar: AppBar(
+        title: const Text('Assistant IA'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined),
+            onPressed: () {
+              setState(() {
+                _displayMessages.clear();
+                _displayMessages.add({
+                  'role': 'ai',
+                  'text': 'Chat réinitialisé. Comment puis-je vous aider ?'
+                });
+              });
+            },
+          )
+        ],
+      ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               itemCount: _displayMessages.length,
               itemBuilder: (context, index) {
                 final m = _displayMessages[index];
                 final isUser = m['role'] == 'user';
-                return Align(
-                  alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isUser ? AppColors.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 2,
-                        )
-                      ],
-                    ),
-                    child: Text(
-                      m['text']!,
-                      style: TextStyle(
-                        color: isUser ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                  ),
+                return FadeInUp(
+                  duration: const Duration(milliseconds: 300),
+                  child: _buildMessageBubble(m['text']!, isUser),
                 );
               },
             ),
           ),
-          if (_isLoading) const LinearProgressIndicator(),
+          if (_isLoading) 
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: LinearProgressIndicator(backgroundColor: Colors.transparent, minHeight: 2),
+            ),
           if (_isListening) _buildVoiceWave(),
-          Padding(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 8, bottom: 32),
-            child: Row(
-              children: [
-                FloatingActionButton.small(
-                  heroTag: 'mic',
-                  onPressed: _listen,
-                  backgroundColor: _isListening ? Colors.red : AppColors.primary,
-                  child: Icon(_isListening ? Icons.mic : Icons.mic_none, color: Colors.white),
+          _buildInputArea(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(String text, bool isUser) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) 
+            Container(
+              margin: const EdgeInsets.only(right: 8, bottom: 4),
+              child: const CircleAvatar(
+                radius: 14,
+                backgroundColor: AppColors.primary,
+                child: Icon(Icons.auto_awesome, size: 14, color: Colors.white),
+              ),
+            ),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isUser ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(isUser ? 20 : 0),
+                  bottomRight: Radius.circular(isUser ? 0 : 20),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: _isListening ? 'J\'écoute...' : 'Posez une question...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
-                    ),
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 5,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: isUser ? Colors.white : Colors.black87,
+                  fontSize: 15,
                 ),
-                const SizedBox(width: 8),
-                FloatingActionButton.small(
-                  heroTag: 'send',
-                  onPressed: _sendMessage,
-                  child: const Icon(Icons.send),
-                ),
-              ],
+              ),
             ),
           ),
+          if (isUser) 
+            Container(
+              margin: const EdgeInsets.only(left: 8, bottom: 4),
+              child: CircleAvatar(
+                radius: 14,
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                child: const Icon(Icons.person, size: 14, color: AppColors.primary),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildInputArea() {
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.only(left: 16, right: 16, top: 12, bottom: 20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            _CircleIconButton(
+              icon: _isListening ? Icons.mic : Icons.mic_none,
+              color: _isListening ? Colors.red : AppColors.primary,
+              onPressed: _listen,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 50),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: TextField(
+                  controller: _messageController,
+                  maxLines: null,
+                  decoration: InputDecoration(
+                    hintText: _isListening ? 'J\'écoute...' : 'Posez une question...',
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  ),
+                  onSubmitted: (_) => _sendMessage(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            _CircleIconButton(
+              icon: Icons.send,
+              color: AppColors.primary,
+              onPressed: _sendMessage,
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildVoiceWave() {
     return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 40),
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 60),
+      color: Colors.white,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: List.generate(15, (index) {
-          // Animation simple basée sur soundLevel
-          final height = 5.0 + (math.Random().nextDouble() * 20.0 * (1 + _soundLevel.abs() / 10));
+          final height = 3.0 + (math.Random().nextDouble() * 25.0 * (1 + _soundLevel.abs() / 10));
           return AnimatedContainer(
             duration: const Duration(milliseconds: 100),
-            width: 4,
+            width: 3,
             height: height,
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.7),
+              color: Colors.red.withOpacity(0.6),
               borderRadius: BorderRadius.circular(10),
             ),
           );
         }),
+      ),
+    );
+  }
+}
+
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onPressed;
+
+  const _CircleIconButton({
+    required this.icon,
+    required this.color,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color,
+      shape: const CircleBorder(),
+      elevation: 2,
+      child: InkWell(
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
       ),
     );
   }

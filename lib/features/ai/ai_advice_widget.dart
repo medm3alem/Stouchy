@@ -4,17 +4,27 @@ import 'package:go_router/go_router.dart';
 import '../transactions/providers/transaction_provider.dart';
 import 'gemini_service.dart';
 import 'ai_provider.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 final aiAdviceProvider = FutureProvider<String>((ref) async {
   final apiKey = ref.watch(aiApiKeyProvider);
+  final currentLocale = ref.watch(localeProvider);
+
+  String languageName = "français";
+  if (currentLocale.languageCode == 'en') languageName = "anglais";
+  if (currentLocale.languageCode == 'ar') languageName = "arabe";
   
   final transactions = ref.watch(transactionsProvider).value ?? [];
   final balance = ref.watch(balanceProvider);
   final income = ref.watch(totalIncomeProvider);
   final expense = ref.watch(totalExpenseProvider);
 
-  if (transactions.isEmpty) return "Ajoutez vos premières transactions pour recevoir mes conseils !";
+  if (transactions.isEmpty) {
+    if (currentLocale.languageCode == 'en') return "Add your first transactions to get personalized advice!";
+    if (currentLocale.languageCode == 'ar') return "أضف معاملاتك الأولى للحصول على نصائح مخصصة!";
+    return "Ajoutez vos premières transactions pour recevoir mes conseils !";
+  }
 
   return await GeminiService.analyzeFinances(
     apiKey: apiKey,
@@ -22,6 +32,7 @@ final aiAdviceProvider = FutureProvider<String>((ref) async {
     balance: balance,
     totalIncome: income,
     totalExpense: expense,
+    language: languageName,
   );
 });
 
