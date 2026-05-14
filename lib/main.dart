@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -17,25 +18,31 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   await Hive.initFlutter();
-  tz.initializeTimeZones();
+  
+  // Timezone et Notifications (Mobile et Bureau)
+  if (!kIsWeb) {
+    try {
+      tz.initializeTimeZones();
+      // On n'initialise les notifications que sur les plateformes supportées
+      if (defaultTargetPlatform == TargetPlatform.android || 
+          defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS) {
+        await NotificationService.init();
+      }
+    } catch (e) {
+      debugPrint("Service initialization failed: $e");
+    }
+  }
 
   // Initialisation Firebase
   try {
-    if (DefaultFirebaseOptions.currentPlatform != null) {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    } else {
-      await Firebase.initializeApp();
-    }
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     debugPrint("Firebase initialized successfully");
   } catch (e) {
     debugPrint("Firebase initialization error: $e");
-    // Optionnel: Afficher une interface d'erreur si Firebase est critique
-  }
-  
-  try {
-    await NotificationService.init();
-  } catch (e) {
-    debugPrint("Notifications init failed: $e");
+    // Sur le Web, cette erreur est souvent due à une configuration manquante
   }
 
   runApp(

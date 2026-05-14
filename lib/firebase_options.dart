@@ -4,17 +4,47 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, Tar
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError('Web not configured');
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError('iOS not configured');
+        return ios;
+      case TargetPlatform.windows:
+        return windows;
       default:
         throw UnsupportedError('DefaultFirebaseOptions are not supported for this platform.');
     }
   }
+
+  // Ces valeurs seront écrasées par 'flutterfire configure'
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'A REMPLACER',
+    appId: 'A REMPLACER',
+    messagingSenderId: '841062706518',
+    projectId: 'stouchy-5ac9c',
+    storageBucket: 'stouchy-5ac9c.firebasestorage.app',
+    iosBundleId: 'com.stouchy.stouchy',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'A REMPLACER',
+    appId: 'A REMPLACER',
+    messagingSenderId: '841062706518',
+    projectId: 'stouchy-5ac9c',
+    storageBucket: 'stouchy-5ac9c.firebasestorage.app',
+  );
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyBtZLgTilq7YHXeZxydSK_qO1vRNQ5GIfU',
+    appId: '1:841062706518:web:471690cea078f17873faf7',
+    messagingSenderId: '841062706518',
+    projectId: 'stouchy-5ac9c',
+    authDomain: 'stouchy-5ac9c.firebaseapp.com',
+    storageBucket: 'stouchy-5ac9c.firebasestorage.app',
+    measurementId: 'G-3WLMYHEPRY',
+  );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyBr322UudRjJJbVuz0rvkU3IIGLBYby9fM',

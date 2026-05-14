@@ -246,8 +246,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _setupPin(BuildContext context, WidgetRef ref) {
-    String firstPin = "";
-    showDialog(
+    showDialog<String>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
@@ -262,7 +261,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               obscureText: true,
               autofocus: true,
               onCompleted: (pin) {
-                firstPin = pin;
                 Navigator.pop(ctx, pin);
               },
             ),
@@ -274,9 +272,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ),
     ).then((pin) {
       if (pin != null) {
-        ref.read(securityProvider.notifier).setPin(pin);
+        // On ne met pas de await ici pour que l'interface réagisse immédiatement
+        ref.read(securityProvider.notifier).setPin(pin).catchError((e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Erreur de synchronisation Cloud : $e"), backgroundColor: AppColors.expense),
+            );
+          }
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Code PIN activé ✓")),
+          const SnackBar(content: Text("Code PIN activé ✓"), backgroundColor: Colors.green),
         );
       }
     });
@@ -292,8 +298,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Annuler")),
           ElevatedButton(
             onPressed: () {
-              ref.read(securityProvider.notifier).removePin();
               Navigator.pop(ctx);
+              // Lancement immédiat en arrière-plan
+              ref.read(securityProvider.notifier).removePin().catchError((e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Erreur de désactivation Cloud : $e"), backgroundColor: AppColors.expense),
+                  );
+                }
+              });
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Protection désactivée")),
               );

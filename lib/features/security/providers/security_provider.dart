@@ -1,8 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
 import '../data/security_repository.dart';
+import '../../auth/data/auth_repository.dart';
 
-final securityRepositoryProvider = Provider((ref) => SecurityRepository());
+final securityRepositoryProvider = Provider((ref) {
+  // On surveille l'état de l'utilisateur (on utilise .value pour avoir l'objet User)
+  final user = ref.watch(authStateProvider).value;
+  return SecurityRepository(FirebaseFirestore.instance, user?.uid);
+});
 
 final securityProvider = StateNotifierProvider<SecurityNotifier, SecurityState>((ref) {
   final repo = ref.watch(securityRepositoryProvider);
@@ -50,7 +56,7 @@ class SecurityNotifier extends StateNotifier<SecurityState> {
 
   SecurityNotifier(this._repo)
       : super(SecurityState(
-          isLocked: true,
+          isLocked: true, // Verrouillé par défaut pour la sécurité
           hasPin: false,
           biometricsEnabled: false,
           canUseBiometrics: false,
@@ -59,28 +65,52 @@ class SecurityNotifier extends StateNotifier<SecurityState> {
   }
 
   Future<void> init() async {
-    final hasPin = await _repo.hasPin();
-    final bioEnabled = await _repo.isBiometricsEnabled();
-    final canUseBio = await _repo.canCheckBiometrics();
-    final available = await _repo.getAvailableBiometrics();
-    
-    state = state.copyWith(
-      hasPin: hasPin,
-      biometricsEnabled: bioEnabled,
-      canUseBiometrics: canUseBio,
-      availableBiometrics: available,
-      isLocked: hasPin,
-    );
+    try {
+      final hasPin = await _repo.hasPin();
+      final bioEnabled = await _repo.isBiometricsEnabled();
+      final canUseBio = await _repo.canCheckBiometrics();
+      final available = await _repo.getAvailableBiometrics();
+      
+      state = state.copyWith(
+        hasPin: hasPin,
+        biometricsEnabled: bioEnabled,
+        canUseBiometrics: canUseBio,
+        availableBiometrics: available,
+        // On ne déverrouille QUE si on a la certitude qu'il n'y a pas de PIN
+        isLocked: hasPin, 
+      );
+    } catch (e) {
+      print("Erreur initialisation sécurité: $e");
+      // En cas d'erreur (ex: permission denied), on reste verrouillé par prudence
+      // On met hasPin à true pour forcer l'affichage de l'écran Lock
+      state = state.copyWith(isLocked: true, hasPin: true);
+    }
   }
 
   Future<void> setPin(String pin) async {
-    await _repo.setPin(pin);
+    // Mise à jour instantanée de l'interface (Optimistic UI)
     state = state.copyWith(hasPin: true);
+    try {
+      await _repo.setPin(pin);
+    } catch (e) {
+      // En cas d'erreur réelle, on annule le changement visuel
+      state = state.copyWith(hasPin: false);
+      print("Erreur setPin: $e");
+      rethrow;
+    }
   }
 
   Future<void> removePin() async {
-    await _repo.removePin();
+    // Mise à jour instantanée de l'interface
     state = state.copyWith(hasPin: false, isLocked: false);
+    try {
+      await _repo.removePin();
+    } catch (e) {
+      // En cas d'erreur, on remet l'état précédent
+      state = state.copyWith(hasPin: true);
+      print("Erreur removePin: $e");
+      rethrow;
+    }
   }
 
   Future<void> setBiometricsEnabled(bool enabled) async {

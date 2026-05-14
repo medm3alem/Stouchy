@@ -1,24 +1,43 @@
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:flutter/services.dart';
 
 class SecurityRepository {
-  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  final FirebaseFirestore _firestore;
+  final String? _userId;
   final LocalAuthentication _auth = LocalAuthentication();
 
-  static const String _pinKey = 'user_pin_code';
-  static const String _biometricKey = 'biometrics_enabled';
+  SecurityRepository(this._firestore, this._userId);
+
+  DocumentReference get _userDoc {
+    if (_userId == null) throw Exception("Utilisateur non connecté au service de sécurité");
+    return _firestore.collection('users').doc(_userId);
+  }
 
   Future<void> setPin(String pin) async {
-    await _storage.write(key: _pinKey, value: pin);
+    try {
+      await _userDoc.set({'pin': pin}, SetOptions(merge: true));
+    } catch (e) {
+      print("Erreur Firestore setPin: $e");
+      rethrow;
+    }
   }
 
   Future<String?> getPin() async {
-    return await _storage.read(key: _pinKey);
+    if (_userId == null) return null;
+    // On ne catch plus l'erreur ici, on la laisse remonter au notifier
+    final doc = await _userDoc.get();
+    if (doc.exists) {
+      final data = doc.data() as Map<String, dynamic>?;
+      return data?['pin'] as String?;
+    }
+    return null;
   }
 
   Future<void> removePin() async {
-    await _storage.delete(key: _pinKey);
+    if (_userId == null) return;
+    // Utiliser update avec FieldValue.delete est plus propre pour supprimer un champ
+    await _userDoc.update({'pin': FieldValue.delete()});
   }
 
   Future<bool> hasPin() async {
@@ -27,12 +46,18 @@ class SecurityRepository {
   }
 
   Future<void> setBiometricsEnabled(bool enabled) async {
-    await _storage.write(key: _biometricKey, value: enabled.toString());
+    if (_userId == null) return;
+    await _userDoc.set({'biometrics_enabled': enabled}, SetOptions(merge: true));
   }
 
   Future<bool> isBiometricsEnabled() async {
-    final value = await _storage.read(key: _biometricKey);
-    return value == 'true';
+    if (_userId == null) return false;
+    final doc = await _userDoc.get();
+    if (doc.exists) {
+      final data = doc.data() as Map<String, dynamic>?;
+      return data?['biometrics_enabled'] == true;
+    }
+    return false;
   }
 
   Future<bool> canCheckBiometrics() async {

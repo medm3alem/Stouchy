@@ -111,9 +111,13 @@ class _LockScreenState extends ConsumerState<LockScreen> {
               const SizedBox(height: 8),
               FadeInDown(
                 delay: const Duration(milliseconds: 300),
-                child: Text(
-                  'Entrez votre code PIN pour continuer',
-                  style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  child: Text(
+                    'Entrez le code PIN défini sur cet appareil pour continuer',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+                  ),
                 ),
               ),
               const SizedBox(height: 40),
@@ -167,9 +171,15 @@ class _LockScreenState extends ConsumerState<LockScreen> {
               const Spacer(),
               TextButton(
                 onPressed: () async {
+                  // Sur le Web, si le PIN pose problème, la déconnexion permet de repartir à zéro
                   await ref.read(authRepositoryProvider).signOut();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text("Session réinitialisée. Reconnectez-vous pour définir un nouveau PIN.")),
+                    );
+                  }
                 },
-                child: const Text('Déconnexion'),
+                child: const Text('Code oublié ou problème ? Se déconnecter'),
               ),
               const SizedBox(height: 20),
             ],
