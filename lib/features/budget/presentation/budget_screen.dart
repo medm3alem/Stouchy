@@ -4,9 +4,40 @@ import 'package:stouchy/l10n/app_localizations.dart';
 import '../data/budget_repository.dart';
 import '../domain/budget.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/currency_settings_provider.dart';
+import '../../currency/providers/currency_provider.dart';
 
 final budgetStreamProvider = StreamProvider<BudgetModel?>((ref) {
   return ref.watch(budgetRepositoryProvider).getBudget();
+});
+
+final convertedBudgetProvider = Provider<AsyncValue<BudgetModel?>>((ref) {
+  final budgetAsync = ref.watch(budgetStreamProvider);
+  final preferredCurrency = ref.watch(currencySettingsProvider);
+  final ratesAsync = ref.watch(exchangeRatesProvider(preferredCurrency));
+
+  return budgetAsync.when(
+    data: (budget) {
+      if (budget == null) return const AsyncValue.data(null);
+      if (budget.currency == preferredCurrency) return AsyncValue.data(budget);
+
+      return ratesAsync.when(
+        data: (rates) {
+          final rate = rates[budget.currency];
+          if (rate == null) return AsyncValue.data(budget);
+          return AsyncValue.data(BudgetModel(
+            limit: budget.limit / rate,
+            currency: preferredCurrency,
+            period: budget.period,
+          ));
+        },
+        loading: () => const AsyncValue.loading(),
+        error: (err, stack) => AsyncValue.data(budget), // Retourne le budget original en cas d'erreur
+      );
+    },
+    loading: () => const AsyncValue.loading(),
+    error: (err, stack) => AsyncValue.error(err, stack),
+  );
 });
 
 class BudgetScreen extends ConsumerStatefulWidget {
@@ -29,8 +60,12 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     final limit = double.tryParse(_limitController.text);
     if (limit == null) return;
 
+    final currentCurrency = ref.read(currencySettingsProvider);
+
     try {
-      await ref.read(budgetRepositoryProvider).setBudget(BudgetModel(limit: limit));
+      await ref.read(budgetRepositoryProvider).setBudget(
+        BudgetModel(limit: limit, currency: currentCurrency)
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(AppLocalizations.of(context)!.budgetUpdated)),
@@ -49,14 +84,14 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final budgetAsync = ref.watch(budgetStreamProvider);
+    final budgetAsync = ref.watch(convertedBudgetProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.budget)),
       body: budgetAsync.when(
         data: (budget) {
           if (budget != null && _limitController.text.isEmpty) {
-            _limitController.text = budget.limit.toString();
+            _limitController.text = budget.limit.toStringAsFixed(2);
           }
           return Padding(
             padding: const EdgeInsets.all(24.0),
@@ -73,7 +108,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: l10n.amount,
-                    suffixText: '€',
+                    suffixText: ref.watch(currencySymbolProvider),
                     prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
                   ),
                 ),

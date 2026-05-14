@@ -12,23 +12,39 @@ import '../../features/budget/presentation/budget_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../../features/ai/chat_ai_screen.dart';
 import '../../features/auth/presentation/profile_screen.dart';
+import '../../features/currency/presentation/currency_converter_screen.dart';
+import '../../features/transactions/presentation/recurring_transactions_screen.dart';
+import '../../features/transactions/presentation/add_recurring_screen.dart';
+
+import '../../features/security/providers/security_provider.dart';
+import '../../features/security/presentation/lock_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
+  final securityState = ref.watch(securityProvider);
+
   return GoRouter(
     initialLocation: '/home',
     redirect: (context, state) {
       final isLoggedIn = authState.value != null;
+      final isLocked = securityState.isLocked;
+      
       final authRoutes = ['/login', '/register'];
       final isAuthRoute = authRoutes.contains(state.matchedLocation);
+      final isLockRoute = state.matchedLocation == '/lock';
+
       if (!isLoggedIn && !isAuthRoute) return '/login';
-      if (isLoggedIn && isAuthRoute) return '/home';
+      if (isLoggedIn) {
+        if (isLocked && !isLockRoute) return '/lock';
+        if (!isLocked && (isAuthRoute || isLockRoute)) return '/home';
+      }
       return null;
     },
     // Animation de transition personnalisée
     routes: [
       GoRoute(path: '/login',    builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: '/lock',     builder: (_, __) => const LockScreen()),
       GoRoute(
         path: '/home',
         pageBuilder: (_, state) => CustomTransitionPage(
@@ -55,6 +71,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/settings',     builder: (_, __) => const SettingsScreen()),
       GoRoute(path: '/chat-ai',      builder: (_, __) => const ChatAiScreen()),
       GoRoute(path: '/profile',      builder: (_, __) => const ProfileScreen()),
+      GoRoute(path: '/currency-converter', builder: (_, __) => const CurrencyConverterScreen()),
+      GoRoute(path: '/recurring-transactions', builder: (_, __) => const RecurringTransactionsScreen()),
+      GoRoute(path: '/add-recurring', builder: (_, __) => const AddRecurringScreen()),
     ],
   );
 });

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:go_router/go_router.dart';
-import 'package:stouchy/l10n/app_localizations.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../data/auth_repository.dart';
+import '../providers/profile_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -30,12 +32,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+    if (pickedFile != null) {
+      await ref.read(profilePhotoProvider.notifier).updatePhoto(pickedFile.path);
+    }
+  }
+
   Future<void> _updateProfile() async {
     setState(() => _isLoading = true);
     try {
       final user = ref.read(authRepositoryProvider).currentUser;
       if (user != null) {
         await user.updateDisplayName(_nameController.text.trim());
+        await user.reload();
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profil mis à jour ✓'), backgroundColor: Colors.green),
@@ -77,10 +89,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authStateProvider).value;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localImagePath = ref.watch(profilePhotoProvider);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBg : AppColors.background,
       appBar: AppBar(
+        centerTitle: true,
         title: const Text('Mon Profil'),
       ),
       body: SingleChildScrollView(
@@ -88,10 +102,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Column(
           children: [
             FadeInDown(
-              child: const CircleAvatar(
-                radius: 50,
-                backgroundColor: AppColors.primary,
-                child: Icon(Icons.person, size: 50, color: Colors.white),
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: AppColors.primary,
+                    backgroundImage: localImagePath != null && File(localImagePath).existsSync()
+                        ? FileImage(File(localImagePath))
+                        : null,
+                    child: (localImagePath == null || !File(localImagePath).existsSync())
+                        ? const Icon(Icons.person, size: 50, color: Colors.white)
+                        : null,
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),

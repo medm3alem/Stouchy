@@ -42,6 +42,12 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
+        titleTextStyle: GoogleFonts.poppins(
+          fontSize: 20,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.5,
+          color: Colors.white,
+        ),
       ),
 
       cardTheme: CardThemeData(

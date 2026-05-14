@@ -23,17 +23,23 @@ class AuthRepository {
     }
   }
 
-  Future<UserCredential> signUp({required String email, required String password}) async {
+  Future<UserCredential> signUp({
+    required String email,
+    required String password,
+    String? displayName,
+  }) async {
     try {
-      print("Tentative d'inscription pour: $email");
       final credential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
-      print("Inscription réussie pour: ${credential.user?.uid}");
+      
+      if (displayName != null) {
+        await credential.user?.updateDisplayName(displayName);
+        await credential.user?.reload();
+      }
+
       return credential;
     } on FirebaseAuthException catch (e) {
-      print("Erreur Firebase Auth (${e.code}): ${e.message}");
       throw _handleAuthException(e);
     } catch (e) {
-      print("Erreur inconnue lors de l'inscription: $e");
       rethrow;
     }
   }

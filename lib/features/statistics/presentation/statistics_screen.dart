@@ -5,8 +5,13 @@ import 'package:animate_do/animate_do.dart';
 import 'package:intl/intl.dart';
 import '../../transactions/domain/transaction.dart';
 import '../../transactions/providers/transaction_provider.dart';
+import '../../../core/providers/currency_settings_provider.dart';
+import '../../../core/providers/locale_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import 'package:stouchy/l10n/app_localizations.dart';
+import '../../reports/report_service.dart';
+import '../../ai/gemini_service.dart';
+import '../../ai/ai_provider.dart';
 
 enum ChartView { pie, line }
 
@@ -20,16 +25,90 @@ class StatisticsScreen extends ConsumerStatefulWidget {
 class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   TransactionType _selectedType = TransactionType.expense;
   ChartView _selectedView = ChartView.pie;
+  bool _isGeneratingReport = false;
+
+  Future<void> _generatePdfReport() async {
+    setState(() => _isGeneratingReport = true);
+    
+    try {
+      final transactions = ref.read(convertedTransactionsProvider);
+      final balance = ref.read(balanceProvider);
+      final income = ref.read(totalIncomeProvider);
+      final expense = ref.read(totalExpenseProvider);
+      final currencySymbol = ref.read(currencySymbolProvider);
+      final apiKey = ref.read(aiApiKeyProvider);
+      final locale = ref.read(localeProvider);
+      
+      final monthYear = DateFormat.yMMMM(locale.languageCode).format(DateTime.now());
+      
+      // Filtrer les dépenses par catégorie pour le rapport
+      final expenseTxs = transactions.where((t) => t.type == TransactionType.expense).toList();
+      final Map<String, double> categoryData = {};
+      for (var t in expenseTxs) {
+        categoryData[t.category] = (categoryData[t.category] ?? 0) + t.amount;
+      }
+
+      // 1. Obtenir l'analyse AI
+      final aiAdvice = await GeminiService.generateMonthlyReport(
+        apiKey: apiKey,
+        transactions: transactions,
+        balance: balance,
+        totalIncome: income,
+        totalExpense: expense,
+        monthYear: monthYear,
+        currencySymbol: currencySymbol,
+        language: locale.languageCode == 'fr' ? 'français' : 'english',
+      );
+
+      // 2. Générer le PDF
+      await ReportService.generateAndDownloadReport(
+        monthYear: monthYear,
+        balance: balance,
+        totalIncome: income,
+        totalExpense: expense,
+        categoryData: categoryData,
+        aiAdvice: aiAdvice,
+        currencySymbol: currencySymbol,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Rapport PDF généré avec succès ✓'), behavior: SnackBarBehavior.floating),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors du rapport : $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGeneratingReport = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final transactionsAsync = ref.watch(transactionsProvider);
+    final currencySymbol = ref.watch(currencySymbolProvider);
 
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(l10n.statistics),
         actions: [
+          if (_isGeneratingReport)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              tooltip: 'Télécharger le rapport mensuel',
+              onPressed: _generatePdfReport,
+            ),
           IconButton(
             icon: Icon(_selectedView == ChartView.pie ? Icons.show_chart : Icons.pie_chart),
             onPressed: () {
@@ -43,7 +122,9 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
       body: transactionsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Erreur : $e')),
-        data: (transactions) {
+        data: (_) {
+          // Utiliser les transactions converties
+          final transactions = ref.watch(convertedTransactionsProvider);
           if (transactions.isEmpty) return _buildEmptyState(l10n);
 
           final filteredTxs = transactions.where((t) => t.type == _selectedType).toList();
@@ -78,7 +159,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                 // Carte résumé
                 FadeInUp(
                   delay: const Duration(milliseconds: 200),
-                  child: _buildSummaryCard(total, _selectedType),
+                  child: _buildSummaryCard(total, _selectedType, currencySymbol),
                 ),
                 const SizedBox(height: 24),
 
@@ -119,6 +200,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                           amount: entry.value,
                           total: total,
                           color: _getCategoryColor(entry.key),
+                          currencySymbol: currencySymbol,
                         )).toList(),
                       ],
                     ),
@@ -229,7 +311,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     );
   }
 
-  Widget _buildSummaryCard(double total, TransactionType type) {
+  Widget _buildSummaryCard(double total, TransactionType type, String currencySymbol) {
     final color = type == TransactionType.income ? AppColors.income : AppColors.expense;
     return Container(
       padding: const EdgeInsets.all(20),
@@ -246,7 +328,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(type == TransactionType.income ? 'Revenus totaux' : 'Dépenses totales', style: TextStyle(color: color, fontWeight: FontWeight.w600)),
-              Text('${total.toStringAsFixed(2)} €', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              Text('${total.toStringAsFixed(2)} $currencySymbol', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             ],
           )
         ],
@@ -279,7 +361,8 @@ class _CategoryTile extends StatelessWidget {
   final double amount;
   final double total;
   final Color color;
-  const _CategoryTile({required this.category, required this.amount, required this.total, required this.color});
+  final String currencySymbol;
+  const _CategoryTile({required this.category, required this.amount, required this.total, required this.color, required this.currencySymbol});
 
   @override
   Widget build(BuildContext context) {
@@ -315,7 +398,7 @@ class _CategoryTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text('${amount.toStringAsFixed(2)} €', style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('${amount.toStringAsFixed(2)} $currencySymbol', style: const TextStyle(fontWeight: FontWeight.bold)),
               Text('${percentage.toStringAsFixed(1)}%', style: TextStyle(color: Colors.grey[600], fontSize: 11)),
             ],
           ),

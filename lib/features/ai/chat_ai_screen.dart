@@ -9,6 +9,7 @@ import '../transactions/providers/transaction_provider.dart';
 import '../transactions/domain/transaction.dart';
 import 'ai_provider.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../../core/providers/currency_settings_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 class ChatAiScreen extends ConsumerStatefulWidget {
@@ -35,7 +36,7 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
     _speech = stt.SpeechToText();
     _displayMessages.add({
       'role': 'ai',
-      'text': 'Bonjour ! Je suis votre coach Stouchy. Je vois vos finances. Une question ?'
+      'text': 'Bonjour ! Je suis votre Conseiller Stouchy. Je vois vos finances. Une question ?'
     });
   }
 
@@ -114,13 +115,14 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
     final userKey = ref.read(aiApiKeyProvider);
     final apiKey = (userKey != null && userKey.isNotEmpty)
         ? userKey
-        : ''; // Masqué pour GitHub
+        : '';
 
     final transactions = ref.read(transactionsProvider).value ?? [];
     final balance = ref.read(balanceProvider);
     final income = ref.read(totalIncomeProvider);
     final expense = ref.read(totalExpenseProvider);
     final currentLocale = ref.read(localeProvider);
+    final currencySymbol = ref.read(currencySymbolProvider);
 
     String languageName = "français";
     if (currentLocale.languageCode == 'en') languageName = "anglais";
@@ -130,14 +132,17 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
       final url = Uri.parse('https://api.groq.com/openai/v1/chat/completions');
 
       final txsSummary = transactions.take(30).map((t) => 
-        "${t.date.day}/${t.date.month}: ${t.type == TransactionType.income ? '+' : '-'}${t.amount}€ - ${t.title} [${t.category}]"
+        "${t.date.day}/${t.date.month}: ${t.type == TransactionType.income ? '+' : '-'}${t.amount}$currencySymbol - ${t.title} [${t.category}]"
       ).join("\n");
 
-      final systemPrompt = "Tu es le coach financier de l'app Stouchy. "
-          "SOLDE: ${balance}€ | REVENUS: ${income}€ | DÉPENSES: ${expense}€\n"
+      final systemPrompt = "Tu es le Conseiller Financier de l'app Stouchy. "
+          "SOLDE: $balance$currencySymbol | REVENUS: $income$currencySymbol | DÉPENSES: $expense$currencySymbol\n"
           "HISTORIQUE RÉCENT :\n$txsSummary\n\n"
-          "Réponds toujours en $languageName, de façon concise (max 60 mots). "
-          "Utilise les noms des transactions pour tes analyses.";
+          "RÈGLES :\n"
+          "1. Respecte les dépenses vitales (Logement, Santé). Ne suggère jamais de les couper.\n"
+          "2. Analyse le superflu (Loisirs, abonnements inutiles).\n"
+          "3. Sois direct, professionnel et raisonnable.\n"
+          "Réponds toujours en $languageName, de façon concise (max 60 mots).";
 
       final response = await http.post(
         url,
@@ -146,7 +151,7 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
           'Authorization': 'Bearer $apiKey',
         },
         body: jsonEncode({
-          'model': 'llama-3.3-70b-versatile',
+          'model': 'llama-3.1-8b-instant',
           'messages': [
             {'role': 'system', 'content': systemPrompt},
             {'role': 'user', 'content': text},
@@ -189,6 +194,7 @@ class _ChatAiScreenState extends ConsumerState<ChatAiScreen> {
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBg : Colors.grey[50],
       appBar: AppBar(
+        centerTitle: true,
         title: const Text('Assistant IA'),
         actions: [
           IconButton(

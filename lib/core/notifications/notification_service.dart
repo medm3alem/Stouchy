@@ -59,11 +59,11 @@ class NotificationService {
     );
   }
 
-  static Future<void> showBudgetAlert(double spent, double limit) async {
+  static Future<void> showBudgetAlert(double spent, double limit, String symbol) async {
     await _plugin.show(
       1,
       '⚠️ Budget dépassé !',
-      'Vous avez dépensé ${spent.toStringAsFixed(0)} € sur ${limit.toStringAsFixed(0)} € ce mois',
+      'Vous avez dépensé ${spent.toStringAsFixed(0)} $symbol sur ${limit.toStringAsFixed(0)} $symbol ce mois',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'budget_channel', 'Alertes Budget',
@@ -77,6 +77,63 @@ class NotificationService {
     );
   }
 
+  static Future<void> showRecurringTransactionAlert({
+    required String title,
+    required double amount,
+    required String symbol,
+    required bool isExpense,
+  }) async {
+    final type = isExpense ? 'dépense' : 'revenu';
+    final icon = isExpense ? '💸' : '💰';
+    await _plugin.show(
+      DateTime.now().millisecond + title.hashCode, 
+      '$icon Transaction enregistrée',
+      'Votre $type "$title" de $amount $symbol a été ajouté.',
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'recurring_channel', 'Transactions Récurrentes',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+    );
+  }
+
+  static Future<void> scheduleRecurringNotification({
+    required int id,
+    required String title,
+    required double amount,
+    required String symbol,
+    required DateTime scheduledDate,
+    required bool isExpense,
+  }) async {
+    final type = isExpense ? 'dépense' : 'revenu';
+    final icon = isExpense ? '💸' : '💰';
+    
+    // Utilisation de inexactAllowWhileIdle pour éviter les erreurs de permission Android 12+
+    await _plugin.zonedSchedule(
+      id,
+      '$icon Rappel : Transaction prévue',
+      'Votre $type "$title" de $amount $symbol sera enregistré aujourd\'hui.',
+      tz.TZDateTime.from(scheduledDate, tz.local),
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'recurring_channel', 'Transactions Récurrentes',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  static Future<void> cancelNotification(int id) async {
+    await _plugin.cancel(id);
+  }
+
   static Future<void> scheduleDailyReminder() async {
     await _plugin.zonedSchedule(
       2,
@@ -88,7 +145,7 @@ class NotificationService {
             importance: Importance.defaultImportance),
         iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       matchDateTimeComponents: DateTimeComponents.time,
     );

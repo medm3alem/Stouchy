@@ -4,6 +4,7 @@ import 'package:stouchy/l10n/app_localizations.dart';
 import '../../features/budget/presentation/budget_screen.dart';
 import '../../features/transactions/providers/transaction_provider.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/currency_settings_provider.dart';
 
 class BudgetProgressBar extends ConsumerWidget {
   const BudgetProgressBar({super.key});
@@ -11,8 +12,9 @@ class BudgetProgressBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = AppLocalizations.of(context)!;
-    final budgetAsync = ref.watch(budgetStreamProvider);
+    final budgetAsync = ref.watch(convertedBudgetProvider);
     final monthlyExpense = ref.watch(currentMonthExpenseProvider);
+    final currencySymbol = ref.watch(currencySymbolProvider);
 
     return budgetAsync.when(
       data: (budget) {
@@ -43,7 +45,7 @@ class BudgetProgressBar extends ConsumerWidget {
                 children: [
                   Text(l10n.budget, style: const TextStyle(fontWeight: FontWeight.bold)),
                   Text(
-                    '${monthlyExpense.toStringAsFixed(2)} / ${budget.limit.toStringAsFixed(2)} €',
+                    '${monthlyExpense.toStringAsFixed(2)} / ${budget.limit.toStringAsFixed(2)} $currencySymbol',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: isExceeded ? Colors.red : AppColors.primary,

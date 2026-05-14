@@ -50,15 +50,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   child: Hero(
                     tag: 'app-logo',
                     child: Container(
-                      width: 90, height: 90,
+                      width: 100, height: 100,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                            colors: [AppColors.primary, Color(0xFF9C27B0)],
-                            begin: Alignment.topLeft, end: Alignment.bottomRight),
                         borderRadius: BorderRadius.circular(24),
-                        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 8))],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          )
+                        ],
                       ),
-                      child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 44),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset(
+                          'assets/images/SmallSquareLogoJpg.jpg',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
                   ),
                 ),

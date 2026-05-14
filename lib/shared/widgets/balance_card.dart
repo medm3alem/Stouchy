@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/providers/currency_settings_provider.dart';
 
-class BalanceCard extends StatelessWidget {
+class BalanceCard extends ConsumerWidget {
   final double balance;
   final double income;
   final double expense;
@@ -14,7 +16,9 @@ class BalanceCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final currencySymbol = ref.watch(currencySymbolProvider);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -40,7 +44,7 @@ class BalanceCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '${balance.toStringAsFixed(2)} €',
+            '${balance.toStringAsFixed(2)} $currencySymbol',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 36,
@@ -56,6 +60,7 @@ class BalanceCard extends StatelessWidget {
                 amount: income,
                 icon: Icons.arrow_upward,
                 color: Colors.greenAccent,
+                currencySymbol: currencySymbol,
               ),
               Container(width: 1, height: 40, color: Colors.white24),
               _StatItem(
@@ -63,6 +68,7 @@ class BalanceCard extends StatelessWidget {
                 amount: expense,
                 icon: Icons.arrow_downward,
                 color: Colors.redAccent,
+                currencySymbol: currencySymbol,
               ),
             ],
           ),
@@ -77,12 +83,14 @@ class _StatItem extends StatelessWidget {
   final double amount;
   final IconData icon;
   final Color color;
+  final String currencySymbol;
 
   const _StatItem({
     required this.label,
     required this.amount,
     required this.icon,
     required this.color,
+    required this.currencySymbol,
   });
 
   @override
@@ -98,7 +106,7 @@ class _StatItem extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '${amount.toStringAsFixed(2)} €',
+          '${amount.toStringAsFixed(2)} $currencySymbol',
           style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ],

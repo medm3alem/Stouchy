@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../domain/transaction.dart';
 import '../data/transaction_repository.dart';
 import '../providers/transaction_provider.dart';
+import '../../currency/providers/currency_provider.dart';
+import '../../../core/providers/currency_settings_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/data/auth_repository.dart';
 import '../../ai/gemini_service.dart';
@@ -28,6 +30,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   DateTime _selectedDate = DateTime.now();
   String _selectedCategory = 'Alimentation';
   late TransactionType _type;
+  String _selectedCurrency = 'EUR';
   bool _isLoading = false;
   Timer? _debounce;
   bool _isPredicting = false;
@@ -52,6 +55,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     } else {
       _selectedCategory = 'Alimentation';
     }
+    _selectedCurrency = ref.read(currencySettingsProvider);
     _titleController.addListener(_onTitleChanged);
   }
 
@@ -64,21 +68,30 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     super.dispose();
   }
 
-  Future<void> _checkBudgetAndNotify(double newAmount) async {
+  Future<void> _checkBudgetAndNotify(double newAmount, String currency) async {
     try {
       // On récupère le budget actuel (on attend s'il le faut)
       final budgetAsync = ref.read(budgetStreamProvider);
       final budget = budgetAsync.value;
       
-      // On récupère les dépenses déjà enregistrées ce mois-ci
+      // On récupère les dépenses déjà enregistrées ce mois-ci (déjà converties)
       final currentExpense = ref.read(currentMonthExpenseProvider);
+      final preferredCurrency = ref.read(currencySettingsProvider);
+
+      double amountInPreferred = newAmount;
+      if (currency != preferredCurrency) {
+        final rates = await ref.read(exchangeRatesProvider(preferredCurrency).future);
+        if (rates[currency] != null) {
+          amountInPreferred = newAmount / rates[currency];
+        }
+      }
       
       if (budget != null && budget.limit > 0) {
-        final totalAfter = currentExpense + newAmount;
+        final totalAfter = currentExpense + amountInPreferred;
         
         // On ne notifie que si cet achat précis nous fait passer au-dessus du budget
         if (totalAfter > budget.limit && currentExpense <= budget.limit) {
-          await NotificationService.showBudgetAlert(totalAfter, budget.limit);
+          await NotificationService.showBudgetAlert(totalAfter, budget.limit, preferredCurrency);
         }
       }
     } catch (e) {
@@ -133,6 +146,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       userId: userId,
       title: _titleController.text,
       amount: amount,
+      currency: _selectedCurrency,
       date: _selectedDate,
       category: _selectedCategory,
       type: _type,
@@ -147,7 +161,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     // Vérification du budget (on le fait en parallèle de la sauvegarde)
     if (transaction.type == TransactionType.expense) {
-      _checkBudgetAndNotify(transaction.amount);
+      _checkBudgetAndNotify(transaction.amount, transaction.currency);
     }
 
     // On affiche immédiatement le succès et on quitte
@@ -173,6 +187,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        centerTitle: true,
         title: Text(_type == TransactionType.income ? 'Nouveau Revenu' : 'Nouvelle Dépense'),
       ),
       body: SingleChildScrollView(
@@ -206,20 +221,50 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              TextFormField(
-                controller: _amountController,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                decoration: const InputDecoration(
-                  hintText: '0.00 €',
-                  border: InputBorder.none,
-                ),
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Entrez un montant';
-                  if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Montant invalide';
-                  return null;
-                },
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _amountController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                      decoration: const InputDecoration(
+                        hintText: '0.00',
+                        border: InputBorder.none,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Entrez un montant';
+                        if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Montant invalide';
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  DropdownButton<String>(
+                    value: _selectedCurrency,
+                    underline: Container(),
+                    style: TextStyle(
+                      fontSize: 18, 
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                    items: currencyLogos.entries.map((e) => 
+                      DropdownMenuItem(
+                        value: e.key, 
+                        child: Row(
+                          children: [
+                            Text(e.value),
+                            const SizedBox(width: 4),
+                            Text(e.key),
+                          ],
+                        )
+                      )
+                    ).toList(),
+                    onChanged: (val) => setState(() => _selectedCurrency = val!),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
               TextFormField(

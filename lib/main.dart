@@ -11,6 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'core/notifications/notification_service.dart';
 import 'core/providers/locale_provider.dart';
 import 'core/providers/theme_provider.dart';
+import 'core/providers/lifecycle_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,16 +40,33 @@ void main() async {
 
   runApp(
     const ProviderScope(
-      child: BudgetApp(),
+      child: StouchyApp(),
     ),
   );
 }
 
-class BudgetApp extends ConsumerWidget {
-  const BudgetApp({super.key});
+class StouchyApp extends ConsumerStatefulWidget {
+  const StouchyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<StouchyApp> createState() => _StouchyAppState();
+}
+
+class _StouchyAppState extends ConsumerState<StouchyApp> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(ref.read(appLifecycleProvider));
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(ref.read(appLifecycleProvider));
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     final locale = ref.watch(localeProvider);
     final isDark = ref.watch(themeProvider);

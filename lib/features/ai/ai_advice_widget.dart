@@ -5,17 +5,19 @@ import '../transactions/providers/transaction_provider.dart';
 import 'gemini_service.dart';
 import 'ai_provider.dart';
 import '../../../core/providers/locale_provider.dart';
+import '../../../core/providers/currency_settings_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 final aiAdviceProvider = FutureProvider<String>((ref) async {
   final apiKey = ref.watch(aiApiKeyProvider);
   final currentLocale = ref.watch(localeProvider);
+  final currencySymbol = ref.watch(currencySymbolProvider);
 
   String languageName = "français";
   if (currentLocale.languageCode == 'en') languageName = "anglais";
   if (currentLocale.languageCode == 'ar') languageName = "arabe";
   
-  final transactions = ref.watch(transactionsProvider).value ?? [];
+  final transactions = ref.watch(convertedTransactionsProvider);
   final balance = ref.watch(balanceProvider);
   final income = ref.watch(totalIncomeProvider);
   final expense = ref.watch(totalExpenseProvider);
@@ -33,6 +35,7 @@ final aiAdviceProvider = FutureProvider<String>((ref) async {
     totalIncome: income,
     totalExpense: expense,
     language: languageName,
+    currencySymbol: currencySymbol,
   );
 });
 
@@ -51,48 +54,88 @@ class AiAdviceWidget extends ConsumerWidget {
   }
 
   Widget _buildAdviceCard(String advice, BuildContext context) {
-    return InkWell(
-      onTap: () => context.push('/chat-ai'),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withOpacity(isDark ? 0.2 : 0.1),
+            AppColors.primary.withOpacity(isDark ? 0.1 : 0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Icon(Icons.auto_awesome, color: Colors.amber, size: 20),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
+      ),
+      child: InkWell(
+        onTap: () => context.push('/chat-ai'),
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Conseil Stouchy AI',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                      ),
-                      const Icon(Icons.chat_bubble_outline, size: 16, color: AppColors.primary),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.auto_awesome, color: Colors.amber, size: 18),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    advice,
-                    style: TextStyle(color: Colors.grey[800], fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(width: 12),
                   const Text(
-                    'Tapotez pour discuter avec l\'IA',
-                    style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: AppColors.primary),
+                    'Conseiller Stouchy AI',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 15,
+                      letterSpacing: 0.5,
+                    ),
                   ),
+                  const Spacer(),
+                  const Icon(Icons.chevron_right, size: 20, color: AppColors.primary),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Text(
+                advice,
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : Colors.black87,
+                  fontSize: 14,
+                  height: 1.5,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Cliquez pour plus de détails',
+                  style: TextStyle(
+                    fontSize: 10, 
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -100,16 +143,21 @@ class AiAdviceWidget extends ConsumerWidget {
 
   Widget _buildLoadingCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.grey.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey.withOpacity(0.1)),
       ),
       child: const Row(
         children: [
           SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)),
           SizedBox(width: 16),
-          Text("L'IA analyse vos finances...", style: TextStyle(fontSize: 13)),
+          Text(
+            "Analyse en cours par Stouchy AI...", 
+            style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+          ),
         ],
       ),
     );

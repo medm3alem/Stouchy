@@ -39,6 +39,43 @@ class TransactionRepository {
     await _transactionsRef.doc(id).delete();
   }
 
+  // Supprimer les transactions générées par une récurrence à partir d'une date
+  Future<void> deleteRecurringGeneratedTransactions(String recurringId, DateTime fromDate) async {
+    if (_userId == null) return;
+    
+    // Pour éviter d'avoir besoin d'un index composite (recurringId + date),
+    // on récupère toutes les transactions de cette récurrence et on filtre en mémoire.
+    final snapshots = await _transactionsRef
+        .where('recurringId', isEqualTo: recurringId)
+        .get();
+
+    final batch = _firestore.batch();
+    int count = 0;
+    
+    // Normaliser la date de début pour la comparaison
+    final startOfFromDate = DateTime(fromDate.year, fromDate.month, fromDate.day);
+
+    for (var doc in snapshots.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final timestamp = data['date'] as Timestamp?;
+      if (timestamp != null) {
+        final txDate = timestamp.toDate();
+        // Vérifier si la transaction est le même jour ou après
+        if (txDate.isAfter(startOfFromDate) || 
+            (txDate.year == startOfFromDate.year && 
+             txDate.month == startOfFromDate.month && 
+             txDate.day == startOfFromDate.day)) {
+          batch.delete(doc.reference);
+          count++;
+        }
+      }
+    }
+    
+    if (count > 0) {
+      await batch.commit();
+    }
+  }
+
   // Supprimer toutes les transactions (Vider l'historique)
   Future<void> deleteAllTransactions() async {
     if (_userId == null) return;
